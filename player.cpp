@@ -1,9 +1,3 @@
-/******************************
- * Qt player using libVLC     *
- * By protonux                *
- *                            *
- * Under WTFPL                *
- ******************************/
 #include "player.h"
 #include <vlc/vlc.h>
 

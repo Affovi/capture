@@ -1,10 +1,3 @@
-/******************************
- * Qt player using libVLC     *
- * By protonux                *
- *                            *
- * Under WTFPL                *
- ******************************/
-
 #ifndef PLAYER
 #define PLAYER
 
