@@ -1,4 +1,5 @@
 #include "player.h"
+#include "qt_dirs.h"
 #include <vlc/vlc.h>
 
 #define qtu( i ) ((i).toUtf8().constData())
@@ -129,4 +130,22 @@ void Mwindow::stop() {
 void Mwindow::closeEvent(QCloseEvent *event) {
     stop();
     event->accept();
+}
+
+void Mwindow::setMediaOptions(libvlc_media_t *p_md, const QString &options) {
+    /* Take options from the UI, not from what we stored */
+    QStringList optionsList =options.split( " :" );
+
+    /* Insert options */
+    for( int j = 0; j < optionsList.count(); j++ )
+    {
+        QString qs = colon_unescape( optionsList[j] );
+        if( !qs.isEmpty() )
+        {
+            libvlc_media_add_option(p_md, qtu( qs ));
+#ifdef DEBUG_QT
+            msg_Warn( p_intf, "Input option: %s", qtu( qs ) );
+#endif
+        }
+    }
 }

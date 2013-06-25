@@ -35,6 +35,7 @@ class Mwindow : public QMainWindow {
 
                void initMenus();
                void initComponents();
+               void setMediaOptions(libvlc_media_t *p_md, const QString &options);
 };
 
 
