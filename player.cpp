@@ -23,6 +23,7 @@ Mwindow::Mwindow() {
     /* Interface initialisation */
     initMenus();
     initComponents();
+    playCamera();
 }
 
 Mwindow::~Mwindow() {
@@ -54,7 +55,6 @@ void Mwindow::initMenus() {
     fileMenu->addAction(Quit);
     editMenu->addAction(playAc);
 
-    connect(Open, SIGNAL(triggered()), this, SLOT(openFile()));
     connect(playAc, SIGNAL(triggered()), this, SLOT(play()));
     connect(Quit, SIGNAL(triggered()), qApp, SLOT(quit()));
 }
@@ -98,16 +98,14 @@ void Mwindow::initComponents() {
     resize( 600, 400);
 }
 
-void Mwindow::openFile() {
-    /* Just the basic file-select box */
-    QString fileOpen = QFileDialog::getOpenFileName(this,tr("Load a file"), "~");
-
+void Mwindow::playCamera() {
     /* Stop if something is playing */
     if( vlcPlayer && libvlc_media_player_is_playing(vlcPlayer) )
         stop();
 
     /* New Media */
     //libvlc_media_t *vlcMedia = libvlc_media_new_path(vlcObject,qtu(fileOpen));
+    //TODO take the name of the input device from some drop down or something
 #ifdef WIN32
     libvlc_media_t *vlcMedia = libvlc_media_new_location(vlcObject,qtu(QString("dshow://")));
 #else

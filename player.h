@@ -16,7 +16,7 @@ class Mwindow : public QMainWindow {
                virtual ~Mwindow();
 
         private slots:
-               void openFile();
+               void playCamera();
                void play();
                void stop();
                void mute();
