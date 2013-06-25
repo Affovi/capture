@@ -10,7 +10,9 @@
 #define qtu( i ) ((i).toUtf8().constData())
 
 #include <QtGui>
+#if QT_VERSION >= 0x050000
 #include <QtWidgets>
+#endif
 
 Mwindow::Mwindow() {
     vlcPlayer = NULL;
