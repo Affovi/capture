@@ -108,8 +108,11 @@ void Mwindow::openFile() {
 
     /* New Media */
     //libvlc_media_t *vlcMedia = libvlc_media_new_path(vlcObject,qtu(fileOpen));
+#ifdef WIN32
     libvlc_media_t *vlcMedia = libvlc_media_new_location(vlcObject,qtu(QString("dshow://")));
-    libvlc_media_add_option(vlcMedia, " :dshow-vdev=\"Integrated Webcam\"");
+#else
+    libvlc_media_t *vlcMedia = libvlc_media_new_location(vlcObject,qtu(QString("v4l2:///dev/video0")));
+#endif
     if( !vlcMedia )
         return;
 
