@@ -17,24 +17,17 @@ class Mwindow : public QMainWindow {
 
         private slots:
                void playCamera();
-               void play();
                void stop();
-               void mute();
 
                int changeVolume(int);
                void changePosition(int);
-               void updateInterface();
 
         protected:
                virtual void closeEvent(QCloseEvent*);
 
         private:
                QString current;
-               QPushButton *playBut;
-               QPushButton *stopBut;
-               QPushButton *muteBut;
-               QSlider *volumeSlider;
-               QSlider *slider;
+               QPushButton *broadcastBut;
                QWidget *videoWidget;
                QWidget *centralWidget;
                libvlc_instance_t *vlcObject;

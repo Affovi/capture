@@ -42,55 +42,29 @@ void Mwindow::initMenus() {
     videoWidget->setPalette( plt );
 
     QMenu *fileMenu = menuBar()->addMenu("&File");
-    QMenu *editMenu = menuBar()->addMenu("&Edit");
 
-    QAction *Open = new QAction("&Open", this);
     QAction *Quit = new QAction("&Quit", this);
-    QAction *playAc = new QAction("&Play/Pause", this);
 
-    Open->setShortcut(QKeySequence("Ctrl+O"));
     Quit->setShortcut(QKeySequence("Ctrl+Q"));
 
-    fileMenu->addAction(Open);
     fileMenu->addAction(Quit);
-    editMenu->addAction(playAc);
 
-    connect(playAc, SIGNAL(triggered()), this, SLOT(play()));
     connect(Quit, SIGNAL(triggered()), qApp, SLOT(quit()));
 }
 
 void Mwindow::initComponents() {
 
-    playBut = new QPushButton("Play");
-    QObject::connect(playBut, SIGNAL(clicked()), this, SLOT(play()));
+    broadcastBut = new QPushButton("Start Broadcasting");
+    //QObject::connect(playBut, SIGNAL(clicked()), this, SLOT(play()));
 
-    stopBut = new QPushButton("Stop");
-    QObject::connect(stopBut, SIGNAL(clicked()), this, SLOT(stop()));
+    //TODO adding a mute button sounds nice
 
-    muteBut = new QPushButton("Mute");
-    QObject::connect(muteBut, SIGNAL(clicked()), this, SLOT(mute()));
+    QVBoxLayout *layout = new QVBoxLayout;
+    layout->addStretch();
+    layout->addWidget(broadcastBut);
 
-    volumeSlider = new QSlider(Qt::Horizontal);
-    QObject::connect(volumeSlider, SIGNAL(sliderMoved(int)), this, SLOT(changeVolume(int)));
-    volumeSlider->setValue(80);
-
-    slider = new QSlider(Qt::Horizontal);
-    slider->setMaximum(1000);
-    QObject::connect(slider, SIGNAL(sliderMoved(int)), this, SLOT(changePosition(int)));
-
-    QTimer *timer = new QTimer(this);
-    connect(timer, SIGNAL(timeout()), this, SLOT(updateInterface()));
-    timer->start(100);
-
-    QHBoxLayout *layout = new QHBoxLayout;
-    layout->addWidget(playBut);
-    layout->addWidget(stopBut);
-    layout->addWidget(muteBut);
-    layout->addWidget(volumeSlider);
-
-    QVBoxLayout *layout2 = new QVBoxLayout;
-    layout2->addWidget(videoWidget);
-    layout2->addWidget(slider);
+    QHBoxLayout *layout2 = new QHBoxLayout;
+    layout2->addWidget(videoWidget, 1);
     layout2->addLayout(layout);
 
     centralWidget->setLayout(layout2);
@@ -128,26 +102,6 @@ void Mwindow::playCamera() {
 
     /* And play */
     libvlc_media_player_play (vlcPlayer);
-
-    //Set vars and text correctly
-    playBut->setText("Pause");
-}
-
-void Mwindow::play() {
-
-    if(vlcPlayer)
-    {
-        if (libvlc_media_player_is_playing(vlcPlayer))
-        {
-            libvlc_media_player_pause(vlcPlayer);
-            playBut->setText("Play");
-        }
-        else
-        {
-            libvlc_media_player_play(vlcPlayer);
-            playBut->setText("Pause");
-        }
-    }
 }
 
 int Mwindow::changeVolume(int vol) { //Called if you change the volume slider
@@ -164,44 +118,12 @@ void Mwindow::changePosition(int pos) { //Called if you change the position slid
         libvlc_media_player_set_position(vlcPlayer,(float)pos/(float)1000);
 }
 
-void Mwindow::updateInterface() { //Update interface and check if song is finished
-
-    if(vlcPlayer) //It segfault if vlcPlayer don't exist
-    {
-        /* update the timeline */
-        float pos = libvlc_media_player_get_position(vlcPlayer);
-        int siderPos=(int)(pos*(float)(1000));
-        slider->setValue(siderPos);
-
-        /* Stop the media */
-        if (libvlc_media_player_get_state(vlcPlayer) == 6) { this->stop(); }
-    }
-}
-
 void Mwindow::stop() {
     if(vlcPlayer) {
         libvlc_media_player_stop(vlcPlayer);
         libvlc_media_player_release(vlcPlayer);
-        slider->setValue(0);
-        playBut->setText("Play");
     }
     vlcPlayer = NULL;
-}
-
-void Mwindow::mute() {
-    if(vlcPlayer) {
-        if(volumeSlider->value() == 0) { //if already muted...
-
-                this->changeVolume(80);
-                volumeSlider->setValue(80);
-
-        } else { //else mute volume
-
-                this->changeVolume(0);
-                volumeSlider->setValue(0);
-
-        }
-    }
 }
 
 void Mwindow::closeEvent(QCloseEvent *event) {

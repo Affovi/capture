@@ -1,6 +1,6 @@
 QT += widgets gui
 TEMPLATE = app
-TARGET = qtvlc
+TARGET = AffoviCapture
 DEPENDPATH += .
 INCLUDEPATH += .
 LIBS += -lvlc
