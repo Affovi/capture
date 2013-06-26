@@ -1,6 +1,8 @@
 #include "player.h"
 #include "qt_dirs.h"
 #include <vlc/vlc.h>
+#include <vlc/plugins/vlc_common.h>
+#include <vlc/plugins/vlc_modules.h>
 
 #define qtu( i ) ((i).toUtf8().constData())
 
@@ -8,6 +10,15 @@
 #if QT_VERSION >= 0x050000
 #include <QtWidgets>
 #endif
+
+enum {
+    V4L2_DEVICE,
+    PVR_DEVICE,
+    DTV_DEVICE,
+    DSHOW_DEVICE,
+    SCREEN_DEVICE,
+    JACK_DEVICE
+};
 
 Mwindow::Mwindow() : broadcasting(false) {
     vlcPlayer = NULL;
@@ -24,7 +35,7 @@ Mwindow::Mwindow() : broadcasting(false) {
     /* Interface initialisation */
     initMenus();
     initComponents();
-    broadcast(false);
+    refreshPlayer();
 }
 
 Mwindow::~Mwindow() {
@@ -62,6 +73,8 @@ void Mwindow::initComponents() {
     //TODO adding a mute button sounds nice
 
     QVBoxLayout *layout = new QVBoxLayout;
+    QWidget *captureDevicePanel = createCaptureDevicePanel();
+    layout->addWidget(captureDevicePanel);
     layout->addStretch();
     layout->addWidget(broadcastBut);
 
@@ -74,21 +87,70 @@ void Mwindow::initComponents() {
     resize( 600, 400);
 }
 
+QWidget* Mwindow::createCaptureDevicePanel() {
+    QWidget *panel = new QWidget(this);
+    QGridLayout *layout = new QGridLayout();
+    panel->setLayout(layout);
+
+    QLabel *videoDeviceLabel = new QLabel("Video:");
+    layout->addWidget(videoDeviceLabel, 0, 0);
+    videoDeviceCombo = new QComboBox();
+    layout->addWidget(videoDeviceCombo, 0, 1);
+
+    /*******
+     * V4L2*
+     *******/
+    if( module_exists( "v4l2" ) ) {
+        char const * const ppsz_v4lvdevices[] = {
+                "video*"
+        };
+
+        QStringList videoDevicesStringList = QStringList();
+        for ( size_t i = 0; i< sizeof(ppsz_v4lvdevices) / sizeof(*ppsz_v4lvdevices); i++ ) {
+                videoDevicesStringList << QString( ppsz_v4lvdevices[ i ] );
+        }
+        QStringList foundVideoDevices = QDir( "/dev/" ).entryList( videoDevicesStringList, QDir::System ).replaceInStrings( QRegExp("^"), "/dev/" );
+        for (int i = 0; i < foundVideoDevices.size(); i++) {
+            videoDeviceCombo->addItem(foundVideoDevices.at(i), QVariant(V4L2_DEVICE));
+        }
+    }
+
+    return panel;
+}
+
 void Mwindow::broadcast(bool broadcastringSwitch) {
     broadcasting = broadcastringSwitch;
     broadcastBut->setText(broadcasting ? "Pause Broadcasting" : "Start Broadcasting");
-    startVlc();
+    refreshPlayer();
 }
 
-void Mwindow::startVlc() {
+void Mwindow::refreshPlayer() {
     /* New Media */
     //libvlc_media_t *vlcMedia = libvlc_media_new_path(vlcObject,qtu(fileOpen));
-    //TODO take the name of the input device from some drop down or something
+
+    if (videoDeviceCombo->currentIndex() < 0) {
+        //empty combo. Propbably no capture device are connected to this system
+        return;
+    }
+
+    int deviceType = videoDeviceCombo->itemData(videoDeviceCombo->currentIndex()).toInt();
+    const QString deviceText = videoDeviceCombo->currentText();
+
+    libvlc_media_t *vlcMedia = NULL;
+    switch (deviceType) {
 #ifdef WIN32
-    libvlc_media_t *vlcMedia = libvlc_media_new_location(vlcObject,qtu(QString("dshow://")));
+    case DSHOW_DEVICE:
+        vlcMedia = libvlc_media_new_location(vlcObject,qtu(QString("dshow://")));
+        break;
 #else
-    libvlc_media_t *vlcMedia = libvlc_media_new_location(vlcObject,qtu(QString("v4l2:///dev/video0")));
+    case V4L2_DEVICE:
+        vlcMedia = libvlc_media_new_location(vlcObject,qtu(QString("v4l2://") + deviceText));
+        break;
 #endif
+    default:
+        QMessageBox::warning(this, "Unknown device type", "The delected device's type is not recognized");
+    }
+
     if( !vlcMedia )
         return;
 
