@@ -9,7 +9,7 @@
 #include <QtWidgets>
 #endif
 
-Mwindow::Mwindow() {
+Mwindow::Mwindow() : broadcasting(false) {
     vlcPlayer = NULL;
 
     /* Init libVLC */
@@ -24,7 +24,7 @@ Mwindow::Mwindow() {
     /* Interface initialisation */
     initMenus();
     initComponents();
-    playCamera();
+    broadcast(false);
 }
 
 Mwindow::~Mwindow() {
@@ -56,7 +56,8 @@ void Mwindow::initMenus() {
 void Mwindow::initComponents() {
 
     broadcastBut = new QPushButton("Start Broadcasting");
-    //QObject::connect(playBut, SIGNAL(clicked()), this, SLOT(play()));
+    broadcastBut->setCheckable(true);
+    QObject::connect(broadcastBut, SIGNAL(toggled(bool)), this, SLOT(broadcast(bool)));
 
     //TODO adding a mute button sounds nice
 
@@ -73,7 +74,13 @@ void Mwindow::initComponents() {
     resize( 600, 400);
 }
 
-void Mwindow::playCamera() {
+void Mwindow::broadcast(bool broadcastringSwitch) {
+    broadcasting = broadcastringSwitch;
+    broadcastBut->setText(broadcasting ? "Pause Broadcasting" : "Start Broadcasting");
+    startVlc();
+}
+
+void Mwindow::startVlc() {
     /* New Media */
     //libvlc_media_t *vlcMedia = libvlc_media_new_path(vlcObject,qtu(fileOpen));
     //TODO take the name of the input device from some drop down or something
@@ -81,10 +88,13 @@ void Mwindow::playCamera() {
     libvlc_media_t *vlcMedia = libvlc_media_new_location(vlcObject,qtu(QString("dshow://")));
 #else
     libvlc_media_t *vlcMedia = libvlc_media_new_location(vlcObject,qtu(QString("v4l2:///dev/video0")));
-    setMediaOptions(vlcMedia, " :sout=" + colon_escape("#duplicate{dst={transcode{vcodec=h264,vb=800,scale=1,acodec=aac,ab=128,channels=2,samplerate=44100}:http{mux=ts,dst=0.0.0.0:8091/}},dst=display}"));
 #endif
     if( !vlcMedia )
         return;
+
+    if (broadcasting) {
+        setMediaOptions(vlcMedia, " :sout=" + colon_escape("#duplicate{dst={transcode{vcodec=h264,vb=800,scale=1,acodec=aac,ab=128,channels=2,samplerate=44100}:http{mux=ts,dst=0.0.0.0:8091/}},dst=display}"));
+    }
 
     playMedia (vlcMedia);
     libvlc_media_release(vlcMedia);

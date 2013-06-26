@@ -16,9 +16,8 @@ class Mwindow : public QMainWindow {
                virtual ~Mwindow();
 
         private slots:
-               void playCamera();
-               void playMedia(libvlc_media_t *vlcMedia);
                void stop();
+               void broadcast(bool);
 
                int changeVolume(int);
                void changePosition(int);
@@ -33,9 +32,12 @@ class Mwindow : public QMainWindow {
                QWidget *centralWidget;
                libvlc_instance_t *vlcObject;
                libvlc_media_player_t *vlcPlayer;
+               bool broadcasting;
 
                void initMenus();
                void initComponents();
+               void startVlc();
+               void playMedia(libvlc_media_t *vlcMedia);
                void setMediaOptions(libvlc_media_t *p_md, const QString &options);
 };
 
