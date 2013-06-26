@@ -35,7 +35,6 @@ Mwindow::Mwindow() : broadcasting(false) {
     /* Interface initialisation */
     initMenus();
     initComponents();
-    refreshPlayer();
 }
 
 Mwindow::~Mwindow() {
@@ -72,18 +71,20 @@ void Mwindow::initComponents() {
 
     //TODO adding a mute button sounds nice
 
-    QVBoxLayout *layout = new QVBoxLayout;
-    QWidget *captureDevicePanel = createCaptureDevicePanel();
-    layout->addWidget(captureDevicePanel);
-    layout->addStretch();
-    layout->addWidget(broadcastBut);
-
-    QHBoxLayout *layout2 = new QHBoxLayout;
-    layout2->addWidget(videoWidget, 1);
-    layout2->addLayout(layout);
-
-    centralWidget->setLayout(layout2);
     setCentralWidget(centralWidget);
+
+    QHBoxLayout *centalLayout = new QHBoxLayout;
+    centralWidget->setLayout(centalLayout);
+
+    centalLayout->addWidget(videoWidget, 1);
+
+    QVBoxLayout *optionsLayout = new QVBoxLayout;
+    QWidget *captureDevicePanel = createCaptureDevicePanel();
+    optionsLayout->addWidget(captureDevicePanel);
+    optionsLayout->addStretch();
+    optionsLayout->addWidget(broadcastBut);
+    centalLayout->addLayout(optionsLayout);
+
     resize( 600, 400);
 }
 
@@ -95,7 +96,19 @@ QWidget* Mwindow::createCaptureDevicePanel() {
     QLabel *videoDeviceLabel = new QLabel("Video:");
     layout->addWidget(videoDeviceLabel, 0, 0);
     videoDeviceCombo = new QComboBox();
+    QObject::connect(videoDeviceCombo, SIGNAL(currentIndexChanged(int)), this, SLOT(refreshPlayer()));
     layout->addWidget(videoDeviceCombo, 0, 1);
+
+    layout->addWidget(new QLabel("Audio:"), 1, 0);
+    audioDeviceCombo = new QComboBox();
+    layout->addWidget(audioDeviceCombo, 1, 1);
+
+#ifdef Q_OS_WIN
+    /*******
+     * DSHOW*
+     *******/
+    //TODO
+#else
 
     /*******
      * V4L2*
@@ -105,6 +118,7 @@ QWidget* Mwindow::createCaptureDevicePanel() {
                 "video*"
         };
 
+        //add video devices
         QStringList videoDevicesStringList = QStringList();
         for ( size_t i = 0; i< sizeof(ppsz_v4lvdevices) / sizeof(*ppsz_v4lvdevices); i++ ) {
                 videoDevicesStringList << QString( ppsz_v4lvdevices[ i ] );
@@ -113,7 +127,25 @@ QWidget* Mwindow::createCaptureDevicePanel() {
         for (int i = 0; i < foundVideoDevices.size(); i++) {
             videoDeviceCombo->addItem(foundVideoDevices.at(i), QVariant(V4L2_DEVICE));
         }
+
+        //add audio devices
+        QStringList patterns = QStringList();
+        patterns << QString( "pcmC*D*c" );
+
+        QStringList nodes = QDir( "/dev/snd" ).entryList( patterns, QDir::System );
+        QStringList names = nodes.replaceInStrings( QRegExp("^pcmC"), "hw:" )
+                                         .replaceInStrings( QRegExp("c$"), "" )
+                                         .replaceInStrings( QRegExp("D"), "," );
+        for (int i = 0; i<names.size(); i++) {
+            audioDeviceCombo->addItem( names.at(i) );
+        }
     }
+#endif
+
+    /**********
+     * Screen *
+     **********/
+    videoDeviceCombo->addItem("Desktop", QVariant(SCREEN_DEVICE));
 
     return panel;
 }
@@ -136,6 +168,9 @@ void Mwindow::refreshPlayer() {
     int deviceType = videoDeviceCombo->itemData(videoDeviceCombo->currentIndex()).toInt();
     const QString deviceText = videoDeviceCombo->currentText();
 
+    const QString audioText = audioDeviceCombo->currentText();
+
+    QString additionalTransoceOptions = "";
     libvlc_media_t *vlcMedia = NULL;
     switch (deviceType) {
 #ifdef WIN32
@@ -145,8 +180,15 @@ void Mwindow::refreshPlayer() {
 #else
     case V4L2_DEVICE:
         vlcMedia = libvlc_media_new_location(vlcObject,qtu(QString("v4l2://") + deviceText));
+        setMediaOptions(vlcMedia, QString("  :input-slave=alsa://") + audioText);
         break;
 #endif
+    case SCREEN_DEVICE:
+        vlcMedia = libvlc_media_new_location(vlcObject, qtu(QString("screen://")));
+        setMediaOptions(vlcMedia, QString (" :screen-fps=8.0"));//TODO take the fps from a number input
+        setMediaOptions(vlcMedia, QString("  :input-slave=alsa://") + audioText);
+        additionalTransoceOptions += ",width=720"; //TODO take the fps from a number input
+        break;
     default:
         QMessageBox::warning(this, "Unknown device type", "The delected device's type is not recognized");
     }
@@ -155,7 +197,7 @@ void Mwindow::refreshPlayer() {
         return;
 
     if (broadcasting) {
-        setMediaOptions(vlcMedia, " :sout=" + colon_escape("#duplicate{dst={transcode{vcodec=h264,vb=800,scale=1,acodec=aac,ab=128,channels=2,samplerate=44100}:http{mux=ts,dst=0.0.0.0:8091/}},dst=display}"));
+        setMediaOptions(vlcMedia, " :sout=" + colon_escape("#duplicate{dst={transcode{vcodec=h264,vb=800,acodec=aac,ab=128,channels=2,samplerate=44100" + additionalTransoceOptions + "}:http{mux=ts,dst=0.0.0.0:8091/}},dst=display}"));
     }
 
     playMedia (vlcMedia);

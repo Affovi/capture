@@ -36,6 +36,7 @@ class Mwindow : public QMainWindow {
                bool broadcasting;
 
                QComboBox *videoDeviceCombo;
+               QComboBox *audioDeviceCombo;
 
                void initMenus();
                void initComponents();
