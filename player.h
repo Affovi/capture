@@ -5,6 +5,7 @@
 #include <QMainWindow>
 #include <QPushButton>
 #include <QSlider>
+#include <QComboBox>
 #include <vlc/vlc.h>
 
 class Mwindow : public QMainWindow {
