@@ -74,10 +74,6 @@ void Mwindow::initComponents() {
 }
 
 void Mwindow::playCamera() {
-    /* Stop if something is playing */
-    if( vlcPlayer && libvlc_media_player_is_playing(vlcPlayer) )
-        stop();
-
     /* New Media */
     //libvlc_media_t *vlcMedia = libvlc_media_new_path(vlcObject,qtu(fileOpen));
     //TODO take the name of the input device from some drop down or something
@@ -85,12 +81,24 @@ void Mwindow::playCamera() {
     libvlc_media_t *vlcMedia = libvlc_media_new_location(vlcObject,qtu(QString("dshow://")));
 #else
     libvlc_media_t *vlcMedia = libvlc_media_new_location(vlcObject,qtu(QString("v4l2:///dev/video0")));
+    setMediaOptions(vlcMedia, " :sout=" + colon_escape("#duplicate{dst={transcode{vcodec=h264,vb=800,scale=1,acodec=aac,ab=128,channels=2,samplerate=44100}:http{mux=ts,dst=0.0.0.0:8091/}},dst=display}"));
 #endif
     if( !vlcMedia )
         return;
 
-    vlcPlayer = libvlc_media_player_new_from_media (vlcMedia);
+    playMedia (vlcMedia);
     libvlc_media_release(vlcMedia);
+}
+
+void Mwindow::playMedia(libvlc_media_t *vlcMedia) {
+    /* Stop if something is playing */
+    if( vlcPlayer && libvlc_media_player_is_playing(vlcPlayer) )
+        stop();
+
+    if( !vlcMedia )
+        return;
+
+    vlcPlayer = libvlc_media_player_new_from_media (vlcMedia);
 
     /* Integrate the video in the interface */
 #if defined(Q_OS_MAC)

@@ -17,6 +17,7 @@ class Mwindow : public QMainWindow {
 
         private slots:
                void playCamera();
+               void playMedia(libvlc_media_t *vlcMedia);
                void stop();
 
                int changeVolume(int);
