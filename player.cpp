@@ -107,7 +107,48 @@ QWidget* Mwindow::createCaptureDevicePanel() {
     /*******
      * DSHOW*
      *******/
-    //TODO
+    if (module_exists("dshow")) {
+        //That's is just a foul hack. Unfortunatelly there is no way to abtain a vlc_Object
+        //using just vlcObject because libvlc_instance_t is unknown to the application
+        //(it is part of the private vlc API).
+        libvlc_media_player_t *tmp_vlc_obj = libvlc_media_player_new(vlcObject);
+        vlc_object_t *p_this = (vlc_object_t*)(tmp_vlc_obj);
+        module_config_t *p_config = config_FindConfig(p_this, "dshow-vdev");
+        module_config_t *p_item = p_config;
+        module_config_t *p_module_config = config_FindConfig(p_this, p_config->psz_name);
+        QComboBox *combo = videoDeviceCombo;
+
+        if( p_module_config->pf_update_list )
+        {
+            vlc_value_t val;
+            val.psz_string = strdup(p_module_config->value.psz);
+
+            p_module_config->pf_update_list(p_this, p_item->psz_name, val, val, NULL);
+
+            // assume in any case that dirty was set to true
+            // because lazy programmes will use the same callback for
+            // this, like the one behind the refresh push button?
+            p_module_config->b_dirty = false;
+
+            free( val.psz_string );
+        }
+
+        for( int i_index = 0; i_index < p_module_config->i_list; i_index++ )
+        {
+            if( !p_module_config->ppsz_list[i_index]
+                    || strlen(p_module_config->ppsz_list[i_index]) == 0
+                    || strcmp("none", p_module_config->ppsz_list[i_index]) == 0)
+            {
+                continue;
+            }
+            combo->addItem( p_module_config->ppsz_list[i_index],
+                            QVariant( DSHOW_DEVICE) );
+            if( p_item->value.psz && !strcmp( p_module_config->value.psz,
+                                              p_module_config->ppsz_list[i_index] ) )
+                combo->setCurrentIndex( combo->count() - 1 );
+        }
+
+    }
 #else
 
     /*******
@@ -176,6 +217,7 @@ void Mwindow::refreshPlayer() {
 #ifdef WIN32
     case DSHOW_DEVICE:
         vlcMedia = libvlc_media_new_location(vlcObject,qtu(QString("dshow://")));
+        setMediaOptions(vlcMedia, QString(" :dshow-vdev=") + deviceText);
         break;
 #else
     case V4L2_DEVICE:
