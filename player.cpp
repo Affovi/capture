@@ -67,7 +67,7 @@ void Mwindow::initComponents() {
 
     broadcastBut = new QPushButton("Start Broadcasting");
     broadcastBut->setCheckable(true);
-    QObject::connect(broadcastBut, SIGNAL(toggled(bool)), this, SLOT(broadcast(bool)));
+    QObject::connect(broadcastBut, SIGNAL(clicked()), this, SLOT(broadcast()));
 
     //TODO adding a mute button sounds nice
 
@@ -81,7 +81,16 @@ void Mwindow::initComponents() {
     QVBoxLayout *optionsLayout = new QVBoxLayout;
     QWidget *captureDevicePanel = createCaptureDevicePanel();
     optionsLayout->addWidget(captureDevicePanel);
+
     optionsLayout->addStretch();
+
+    QGridLayout *destinationLayout = new QGridLayout();
+    destinationLayout->addWidget(new QLabel("Destination:"), 0, 0);
+    destinationLineEdit = new QLineEdit();
+    destinationLineEdit->setText("10.20.30.24:5004");
+    destinationLayout->addWidget(destinationLineEdit, 0, 1);
+    optionsLayout->addLayout(destinationLayout);
+
     optionsLayout->addWidget(broadcastBut);
     centalLayout->addLayout(optionsLayout);
 
@@ -191,19 +200,30 @@ QWidget* Mwindow::createCaptureDevicePanel() {
     return panel;
 }
 
-void Mwindow::broadcast(bool broadcastringSwitch) {
-    broadcasting = broadcastringSwitch;
-    broadcastBut->setText(broadcasting ? "Pause Broadcasting" : "Start Broadcasting");
-    refreshPlayer();
+void Mwindow::broadcast() {
+    broadcast(!broadcasting);
 }
 
-void Mwindow::refreshPlayer() {
+void Mwindow::broadcast(bool broadcastringSwitch) {
+    bool prevBroadcasting = broadcasting;
+    broadcasting = broadcastringSwitch;
+    int err = refreshPlayer();
+    if (!err) {
+        broadcastBut->setText(broadcasting ? "Pause Broadcasting" : "Start Broadcasting");
+    } else {
+        broadcasting = prevBroadcasting;
+    }
+
+    broadcastBut->setChecked(broadcasting);
+}
+
+int Mwindow::refreshPlayer() {
     /* New Media */
     //libvlc_media_t *vlcMedia = libvlc_media_new_path(vlcObject,qtu(fileOpen));
 
     if (videoDeviceCombo->currentIndex() < 0) {
         //empty combo. Propbably no capture device are connected to this system
-        return;
+        return 1;
     }
 
     int deviceType = videoDeviceCombo->itemData(videoDeviceCombo->currentIndex()).toInt();
@@ -236,14 +256,23 @@ void Mwindow::refreshPlayer() {
     }
 
     if( !vlcMedia )
-        return;
+        return 1;
 
     if (broadcasting) {
-        setMediaOptions(vlcMedia, " :sout=" + colon_escape("#duplicate{dst={transcode{vcodec=h264,vb=800,acodec=aac,ab=128,channels=2,samplerate=44100" + additionalTransoceOptions + "}:http{mux=ts,dst=0.0.0.0:8091/}},dst=display}"));
+        QString destHostAndPort = destinationLineEdit->text();
+        QStringList split = destHostAndPort.split(":");
+        if (split.length() != 2) {
+            QMessageBox::warning(this, "Incorrect destination address", "The destination address is incorect");
+            return 1;
+        }
+        QString host = split.at(0);
+        QString port = split.at(1);
+        setMediaOptions(vlcMedia, " :sout=" + colon_escape("#duplicate{dst={transcode{vcodec=h264,vb=800,acodec=aac,ab=128,channels=2,samplerate=44100" + additionalTransoceOptions + "}:rtp{dst=" + host + ",port=" + port + ",mux=ts,ttl=30/}},dst=display}"));
     }
 
     playMedia (vlcMedia);
     libvlc_media_release(vlcMedia);
+    return 0;
 }
 
 void Mwindow::playMedia(libvlc_media_t *vlcMedia) {

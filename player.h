@@ -19,7 +19,8 @@ class Mwindow : public QMainWindow {
         private slots:
                void stop();
                void broadcast(bool);
-               void refreshPlayer();
+               void broadcast();
+               int refreshPlayer();
 
                int changeVolume(int);
                void changePosition(int);
@@ -38,6 +39,7 @@ class Mwindow : public QMainWindow {
 
                QComboBox *videoDeviceCombo;
                QComboBox *audioDeviceCombo;
+               QLineEdit *destinationLineEdit;
 
                void initMenus();
                void initComponents();
