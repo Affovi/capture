@@ -1,8 +1,12 @@
 #include "player.h"
 #include "qt_dirs.h"
 #include <vlc/vlc.h>
+
+//the vlc plugin headers are not distributed with the standard vlc under mac
+#ifndef Q_OS_MAC
 #include <vlc/plugins/vlc_common.h>
 #include <vlc/plugins/vlc_modules.h>
+#endif
 
 #define qtu( i ) ((i).toUtf8().constData())
 
@@ -11,13 +15,16 @@
 #include <QtWidgets>
 #endif
 
+#include <QCamera>
+
 enum {
     V4L2_DEVICE,
     PVR_DEVICE,
     DTV_DEVICE,
     DSHOW_DEVICE,
     SCREEN_DEVICE,
-    JACK_DEVICE
+    JACK_DEVICE,
+    QT_DEVICE
 };
 
 Mwindow::Mwindow() : broadcasting(false) {
@@ -158,6 +165,11 @@ QWidget* Mwindow::createCaptureDevicePanel() {
         }
 
     }
+#elif defined(Q_OS_MAC)
+    foreach(const QByteArray &deviceName, QCamera::availableDevices()) {
+        //QString description = camera->deviceDescription(deviceName);
+        videoDeviceCombo->addItem(deviceName, QT_DEVICE);
+    }
 #else
 
     /*******
@@ -245,6 +257,9 @@ int Mwindow::refreshPlayer() {
         setMediaOptions(vlcMedia, QString("  :input-slave=alsa://") + audioText);
         break;
 #endif
+    case QT_DEVICE:
+        vlcMedia = libvlc_media_new_location(vlcObject, qtu(QString("qtcapture://") + deviceText));
+        break;
     case SCREEN_DEVICE:
         vlcMedia = libvlc_media_new_location(vlcObject, qtu(QString("screen://")));
         setMediaOptions(vlcMedia, QString (" :screen-fps=8.0"));//TODO take the fps from a number input
@@ -287,7 +302,7 @@ void Mwindow::playMedia(libvlc_media_t *vlcMedia) {
 
     /* Integrate the video in the interface */
 #if defined(Q_OS_MAC)
-    libvlc_media_player_set_nsobject(vlcPlayer, videoWidget->winId());
+    libvlc_media_player_set_nsobject(vlcPlayer, (void*)videoWidget->winId());
 #elif defined(Q_OS_UNIX)
     libvlc_media_player_set_xwindow(vlcPlayer, videoWidget->winId());
 #elif defined(Q_OS_WIN)
