@@ -282,7 +282,7 @@ int Mwindow::refreshPlayer() {
         }
         QString host = split.at(0);
         QString port = split.at(1);
-        setMediaOptions(vlcMedia, " :sout=" + colon_escape("#duplicate{dst={transcode{vcodec=h264,vb=800,acodec=aac,ab=128,channels=2,samplerate=44100" + additionalTransoceOptions + "}:rtp{dst=" + host + ",port=" + port + ",mux=ts,ttl=30/}},dst=display}"));
+        setMediaOptions(vlcMedia, " :sout=" + colon_escape("#duplicate{dst={transcode{vcodec=h264,vb=800,fps=24,acodec=aac,ab=128,channels=2,samplerate=44100" + additionalTransoceOptions + "}:rtp{dst=" + host + ",port=" + port + ",mux=ts,ttl=30/}},dst=display}"));
     }
 
     playMedia (vlcMedia);
